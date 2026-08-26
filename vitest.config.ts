@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
     exclude: ["test/e2e/**"],
+    benchmark: { include: ["test/bench/**/*.bench.ts"] },
     environment: "node",
     environmentOptions: {
       happyDOM: {

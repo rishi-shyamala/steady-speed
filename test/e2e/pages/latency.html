@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Discovery latency</title></head>
+  <body>
+    <script>
+      /** How long from inserting a player to it being set to the target speed. */
+      window.measureInsertion = async (count) => {
+        const samples = [];
+        for (let i = 0; i < count; i += 1) {
+          const player = document.createElement("video");
+          const started = performance.now();
+          document.body.append(player);
+          await new Promise((done) => {
+            const check = () => {
+              if (player.playbackRate !== 1) done();
+              else requestAnimationFrame(check);
+            };
+            check();
+          });
+          samples.push(performance.now() - started);
+          player.remove();
+        }
+        return samples;
+      };
+
+      /** Whether the rate is already right by the time playback starts. */
+      window.measureAtPlay = async (count) => {
+        const results = [];
+        for (let i = 0; i < count; i += 1) {
+          const player = document.createElement("video");
+          player.src = "clip.webm";
+          player.muted = true;
+          document.body.append(player);
+          const rate = await new Promise((done) => {
+            player.addEventListener("playing", () => done(player.playbackRate), { once: true });
+            player.play().catch(() => done(-1));
+          });
+          results.push(rate);
+          player.pause();
+          player.remove();
+        }
+        return results;
+      };
+    </script>
+  </body>
+</html>

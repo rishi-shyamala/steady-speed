@@ -28,10 +28,18 @@ function start(overrides: Overrides = {}): void {
   });
 }
 
-function flush(): void {
-  const queued = tasks;
-  tasks = [];
-  for (const task of queued) task();
+/** Runs queued idle work until it settles; a shadow crawl can queue more. */
+function flush(rounds = 4): void {
+  for (let i = 0; i < rounds && tasks.length > 0; i += 1) {
+    const queued = tasks;
+    tasks = [];
+    for (const task of queued) task();
+  }
+}
+
+/** Only the mutation-batch task; the shadow crawl is scheduled separately. */
+function pendingFlushes(): number {
+  return tasks.filter((task) => task.name === "flush").length;
 }
 
 function addVideo(parent: ParentNode = document.body): HTMLVideoElement {
@@ -96,21 +104,46 @@ describe("elements added later", () => {
     start();
     video.remove();
     await tick();
-    expect(tasks).toEqual([]);
+    expect(pendingFlushes()).toBe(0);
   });
 
   it("does not schedule a second flush while one is already pending", async () => {
     start();
     addVideo();
     await tick();
-    expect(tasks).toHaveLength(1);
+    expect(pendingFlushes()).toBe(1);
 
     addVideo();
     await tick();
-    expect(tasks).toHaveLength(1);
+    expect(pendingFlushes()).toBe(1);
 
     flush();
     expect(found).toHaveLength(2);
+  });
+
+  it("finds media in a shadow root on an element added later", async () => {
+    start();
+    const host = document.createElement("div");
+    const shadow = host.attachShadow({ mode: "open" });
+    const video = document.createElement("video");
+    shadow.append(video);
+    document.body.append(host);
+
+    await tick();
+    flush();
+    expect(found).toEqual([video]);
+  });
+
+  it("does not query inside an added node that cannot contain anything", async () => {
+    start();
+    const leaf = document.createElement("span");
+    leaf.textContent = "just text";
+    const query = vi.spyOn(leaf, "querySelectorAll");
+    document.body.append(leaf);
+
+    await tick();
+    flush();
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("ignores added nodes that are not elements", async () => {
@@ -128,6 +161,7 @@ describe("elements added later", () => {
     document.body.append(document.createElement("p"), host);
 
     start({ maxCrawlNodes: 1 });
+    flush();
     expect(found).toEqual([]);
   });
 
@@ -135,7 +169,7 @@ describe("elements added later", () => {
     start();
     for (let i = 0; i < 20; i += 1) addVideo();
     await tick();
-    expect(tasks).toHaveLength(1);
+    expect(pendingFlushes()).toBe(1);
     flush();
     expect(found).toHaveLength(20);
   });
@@ -189,6 +223,7 @@ describe("shadow roots", () => {
     const shadow = host.attachShadow({ mode: "open" });
     const video = addVideo(shadow);
     start();
+    flush();
     expect(found).toEqual([video]);
   });
 
@@ -201,6 +236,7 @@ describe("shadow roots", () => {
     const inner = innerHost.attachShadow({ mode: "open" });
     const video = addVideo(inner);
     start();
+    flush();
     expect(found).toEqual([video]);
   });
 
@@ -210,6 +246,7 @@ describe("shadow roots", () => {
     const shadow = host.attachShadow({ mode: "open" });
     const first = addVideo(shadow);
     start();
+    flush();
     expect(found).toEqual([first]);
 
     const second = document.createElement("video");
@@ -249,6 +286,7 @@ describe("shadow roots", () => {
     const shadow = host.attachShadow({ mode: "open" });
     const video = addVideo(shadow);
     start();
+    flush();
     expect(registry.hasRoot(shadow)).toBe(true);
     expect(registry.hasMedia(video)).toBe(true);
   });
@@ -264,8 +302,8 @@ describe("the default scheduler", () => {
       start({ scheduleIdle: undefined });
       addVideo();
       await tick();
-      expect(calls).toHaveLength(1);
-      calls[0]?.();
+      expect(calls.filter((task) => task.name === "flush")).toHaveLength(1);
+      for (const task of calls) task();
       expect(found).toHaveLength(1);
     } finally {
       delete (globalThis as Record<string, unknown>).requestIdleCallback;

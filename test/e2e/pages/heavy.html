@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>A heavy page</title></head>
+  <body>
+    <video id="player" src="clip.webm" muted playsinline></video>
+    <div id="bulk"></div>
+    <script>
+      // Ten thousand nodes, which is a large but not absurd single-page app.
+      const bulk = document.getElementById("bulk");
+      const fragment = document.createDocumentFragment();
+      for (let i = 0; i < 10000; i += 1) {
+        const node = document.createElement("span");
+        node.className = "filler";
+        node.textContent = String(i);
+        fragment.append(node);
+      }
+      bulk.append(fragment);
+    </script>
+  </body>
+</html>

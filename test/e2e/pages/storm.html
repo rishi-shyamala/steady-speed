@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Mutation storm</title></head>
+  <body>
+    <video id="player" src="clip.webm" muted playsinline></video>
+    <div id="churn"></div>
+    <script>
+      // Roughly a thousand nodes added and removed per second, which is what a
+      // busy feed or a virtualised list looks like to a MutationObserver.
+      window.runStorm = (durationMs, perTick) =>
+        new Promise((done) => {
+          const churn = document.getElementById("churn");
+          const started = performance.now();
+          const timer = setInterval(() => {
+            churn.replaceChildren();
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < perTick; i += 1) {
+              const node = document.createElement("div");
+              node.append(document.createElement("span"));
+              fragment.append(node);
+            }
+            churn.append(fragment);
+            if (performance.now() - started >= durationMs) {
+              clearInterval(timer);
+              done(performance.now() - started);
+            }
+          }, 50);
+        });
+    </script>
+  </body>
+</html>

@@ -24,6 +24,8 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "e2e": "vitest run --config vitest.e2e.config.ts",
+    "bench": "vitest bench --run",
+    "perf": "node scripts/perf.mjs",
     "guard": "node scripts/guard.mjs",
     "package": "node scripts/package.mjs",
     "verify": "node scripts/verify.mjs",
