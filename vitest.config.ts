@@ -4,10 +4,17 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
     environment: "node",
+    environmentOptions: {
+      happyDOM: {
+        // Stop happy-dom trying to fetch injected <script src>, which would
+        // fire a spurious error event the page-bridge reads as "CSP blocked us".
+        settings: { disableJavaScriptFileLoading: true, disableJavaScriptEvaluation: true },
+      },
+    },
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      exclude: ["src/**/*.d.ts"],
+      exclude: ["src/**/*.d.ts", "src/**/*.entry.ts"],
       reporter: ["text", "json-summary", "html"],
       thresholds: {
         "src/core/**": { branches: 100, functions: 100, lines: 100, statements: 100 },
