@@ -20,7 +20,7 @@ const ENTRY_POINTS = {
   background: "src/background/index.entry.ts",
   "page-agent": "src/page/agent.entry.ts",
   popup: "src/popup/index.entry.ts",
-  options: "src/options/index.ts",
+  options: "src/options/index.entry.ts",
 };
 
 async function main() {

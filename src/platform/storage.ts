@@ -88,6 +88,8 @@ export function createSettingsStore(
 export interface TierStore {
   /** The tier this host needed last time, or null if it has never misbehaved. */
   get(host: string): Promise<Tier | null>;
+  /** Every host that has needed more than tier 0, for the options page. */
+  list(): Promise<Record<string, Tier>>;
   /** Remembers a tier. Tier 0 forgets the host instead of storing a zero. */
   set(host: string, tier: Tier): Promise<void>;
   clear(): Promise<void>;
@@ -114,6 +116,13 @@ export function createTierStore(api: WebExtensionApi = getBrowser()): TierStore 
       const tiers = await read();
       const tier = tiers[host];
       return tier === undefined ? null : clampTier(tier);
+    },
+
+    async list() {
+      const tiers = await read();
+      return Object.fromEntries(
+        Object.entries(tiers).map(([host, tier]) => [host, clampTier(tier)]),
+      );
     },
 
     async set(host, tier) {
