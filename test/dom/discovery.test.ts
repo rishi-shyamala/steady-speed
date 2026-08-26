@@ -162,6 +162,14 @@ describe("events", () => {
     expect(found).toEqual([video]);
   });
 
+  it("ignores media events fired at something that is not media", () => {
+    const div = document.createElement("div");
+    document.body.append(div);
+    start();
+    div.dispatchEvent(new Event("play", { bubbles: true }));
+    expect(found).toEqual([]);
+  });
+
   it("catches events that do not bubble, via the capture phase", () => {
     const wrapper = document.createElement("div");
     document.body.append(wrapper);

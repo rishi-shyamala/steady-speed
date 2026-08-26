@@ -40,6 +40,11 @@ export interface DiscoveryOptions {
   registry: MediaRegistry;
   /** Called once per element, the first time it is seen. */
   onMedia: (media: HTMLMediaElement) => void;
+  /**
+   * Called for every media event on every known root. Enforcement rides on the
+   * same listeners as discovery so the page only ever carries one set.
+   */
+  onEvent?: ((media: HTMLMediaElement, type: string) => void) | undefined;
   /** Injectable so tests can flush deterministically. */
   scheduleIdle?: ScheduleIdle | undefined;
   /** Ceiling on the shadow-host crawl. Lower it to profile pathological pages. */
@@ -49,6 +54,7 @@ export interface DiscoveryOptions {
 /** Starts discovery for one frame. Returns a function that stops it. */
 export function startDiscovery(options: DiscoveryOptions): () => void {
   const { document: doc, registry, onMedia } = options;
+  const onEvent = options.onEvent;
   const schedule = options.scheduleIdle ?? defaultScheduleIdle;
   const maxCrawlNodes = options.maxCrawlNodes ?? MAX_CRAWL_NODES;
 
@@ -66,7 +72,9 @@ export function startDiscovery(options: DiscoveryOptions): () => void {
 
   const handleMediaEvent = (event: Event): void => {
     const target = event.target;
-    if (isMedia(target)) register(target);
+    if (!isMedia(target)) return;
+    register(target);
+    onEvent?.(target, event.type);
   };
 
   const handleFocus = (event: Event): void => {
