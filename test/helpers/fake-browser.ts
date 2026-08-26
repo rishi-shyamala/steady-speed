@@ -11,22 +11,35 @@ import type {
   MessageSender,
   StorageArea,
   StorageChanges,
+  TabRef,
+  TabsApi,
   WebExtensionApi,
 } from "../../src/platform/webext";
 
 type ChangeListener = (changes: StorageChanges, areaName: string) => void;
 
 export interface FakeBrowser extends WebExtensionApi {
+  /** Always present on the fake, unlike the optional real API. */
+  tabs: TabsApi;
+  action: ActionApi;
   /** Everything currently in storage.local, for assertions. */
   readonly store: Map<string, unknown>;
   /** Badge state keyed by tab id, or "global" when no tabId was given. */
   readonly badges: Map<string, string>;
   /** Messages passed to runtime.sendMessage, in order. */
   readonly sent: unknown[];
+  /** Messages passed to tabs.sendMessage, in order. */
+  readonly tabMessages: { tabId: number; message: unknown }[];
+  /** Titles set on the toolbar button, keyed the same way as badges. */
+  readonly titles: Map<string, string>;
+  /** The colour the badge was last given. */
+  badgeColor: string | null;
+  /** Tabs that tabs.query will report. */
+  activeTabs: TabRef[];
   /** Deliver a message to registered runtime.onMessage listeners. */
   deliverMessage(message: unknown, sender?: MessageSender): unknown[];
   /** Fire a registered command, as the browser would on a hotkey. */
-  fireCommand(command: string): void;
+  fireCommand(command: string, tab?: TabRef): void;
   /** Replace storage contents without firing change events. */
   seed(items: Record<string, unknown>): void;
 }
@@ -35,9 +48,11 @@ export function createFakeBrowser(): FakeBrowser {
   const store = new Map<string, unknown>();
   const badges = new Map<string, string>();
   const sent: unknown[] = [];
+  const tabMessages: { tabId: number; message: unknown }[] = [];
+  const titles = new Map<string, string>();
   const changeListeners = new Set<ChangeListener>();
   const messageListeners = new Set<MessageListener>();
-  const commandListeners = new Set<(command: string) => void>();
+  const commandListeners = new Set<(command: string, tab?: TabRef) => void>();
 
   const emit = (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>): void => {
     if (Object.keys(changes).length === 0) return;
@@ -80,18 +95,49 @@ export function createFakeBrowser(): FakeBrowser {
     },
   };
 
+  const fake = {
+    badgeColor: null as string | null,
+    activeTabs: [] as TabRef[],
+  };
+
   const action: ActionApi = {
     setBadgeText({ text, tabId }) {
       badges.set(tabId === undefined ? "global" : String(tabId), text);
     },
-    setBadgeBackgroundColor() {},
-    setTitle() {},
+    setBadgeBackgroundColor({ color }) {
+      fake.badgeColor = color;
+    },
+    setTitle({ title, tabId }) {
+      titles.set(tabId === undefined ? "global" : String(tabId), title);
+    },
+  };
+
+  const tabs: TabsApi = {
+    async sendMessage(tabId, message) {
+      tabMessages.push({ tabId, message });
+      return undefined;
+    },
+    async query() {
+      return fake.activeTabs;
+    },
   };
 
   return {
     store,
     badges,
     sent,
+    tabMessages,
+    titles,
+    get badgeColor() {
+      return fake.badgeColor;
+    },
+    get activeTabs() {
+      return fake.activeTabs;
+    },
+    set activeTabs(value: TabRef[]) {
+      fake.activeTabs = value;
+    },
+    tabs,
     storage: {
       local,
       onChanged: {
@@ -117,8 +163,8 @@ export function createFakeBrowser(): FakeBrowser {
     deliverMessage(message, sender = {}) {
       return [...messageListeners].map((listener) => listener(message, sender));
     },
-    fireCommand(command) {
-      for (const listener of [...commandListeners]) listener(command);
+    fireCommand(command, tab) {
+      for (const listener of [...commandListeners]) listener(command, tab);
     },
     seed(items) {
       for (const [key, value] of Object.entries(items)) store.set(key, structuredClone(value));

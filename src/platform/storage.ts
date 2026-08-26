@@ -6,11 +6,16 @@
  * no messaging round-trip.
  */
 
+import type { Tier } from "../core/escalation";
 import { normalizeSettings, type Settings } from "../core/settings";
 import { getBrowser, type StorageChanges, type WebExtensionApi } from "./webext";
 
 /** Everything lives under one key, so one change event covers every update. */
 export const SETTINGS_KEY = "settings";
+/** Learned enforcement tiers, keyed by host. Derived state, not user settings. */
+export const TIERS_KEY = "learnedTiers";
+/** Bounded so a lot of browsing cannot grow storage without limit. */
+export const MAX_LEARNED_TIERS = 200;
 
 export type SettingsListener = (settings: Settings) => void;
 
@@ -78,4 +83,72 @@ export function createSettingsStore(
       };
     },
   };
+}
+
+export interface TierStore {
+  /** The tier this host needed last time, or null if it has never misbehaved. */
+  get(host: string): Promise<Tier | null>;
+  /** Remembers a tier. Tier 0 forgets the host instead of storing a zero. */
+  set(host: string, tier: Tier): Promise<void>;
+  clear(): Promise<void>;
+}
+
+/**
+ * Remembering which sites fight lets the second page load start at the rung it
+ * needs, instead of re-earning it. It is a cache, so every failure path here
+ * degrades to "start from scratch" rather than breaking playback.
+ */
+export function createTierStore(api: WebExtensionApi = getBrowser()): TierStore {
+  const read = async (): Promise<Record<string, number>> => {
+    try {
+      const stored = await api.storage.local.get(TIERS_KEY);
+      const value = stored[TIERS_KEY];
+      return isTierMap(value) ? value : {};
+    } catch {
+      return {};
+    }
+  };
+
+  return {
+    async get(host) {
+      const tiers = await read();
+      const tier = tiers[host];
+      return tier === undefined ? null : clampTier(tier);
+    },
+
+    async set(host, tier) {
+      if (host === "") return;
+      const tiers = await read();
+      if (tier <= 0) {
+        if (!(host in tiers)) return;
+        delete tiers[host];
+      } else {
+        if (tiers[host] === tier) return;
+        delete tiers[host];
+        tiers[host] = tier;
+      }
+      await api.storage.local.set({ [TIERS_KEY]: trim(tiers) });
+    },
+
+    async clear() {
+      await api.storage.local.remove(TIERS_KEY);
+    },
+  };
+}
+
+/** Drops the least recently written hosts once the cache is full. */
+function trim(tiers: Record<string, number>): Record<string, number> {
+  const entries = Object.entries(tiers);
+  if (entries.length <= MAX_LEARNED_TIERS) return tiers;
+  return Object.fromEntries(entries.slice(entries.length - MAX_LEARNED_TIERS));
+}
+
+function isTierMap(value: unknown): value is Record<string, number> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function clampTier(value: number): Tier {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  if (value > 3) return 3;
+  return Math.round(value) as Tier;
 }
