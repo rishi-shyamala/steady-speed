@@ -85,3 +85,50 @@ function stripCommentsAndStrings(source) {
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/**
+ * Validates a `commands` suggested shortcut against the grammar both browsers
+ * accept: a required Ctrl/Alt/Command/MacCtrl modifier, an optional Shift, and
+ * one key from the supported list.
+ *
+ * @param {string} shortcut
+ * @param {Set<string>} keys
+ * @returns {string | null} the problem, or null when the shortcut is fine
+ */
+export function checkShortcut(shortcut, keys) {
+  const parts = shortcut.split("+");
+  if (parts.length < 2 || parts.length > 3) return "must be a modifier plus a key";
+
+  const key = parts[parts.length - 1];
+  const modifiers = parts.slice(0, -1);
+  const primary = modifiers[0];
+
+  if (!["Ctrl", "Alt", "Command", "MacCtrl"].includes(primary)) {
+    return "must start with Ctrl, Alt, Command or MacCtrl";
+  }
+  if (modifiers.length === 2 && modifiers[1] !== "Shift") return "the only second modifier is Shift";
+  if (!keys.has(key)) return `\`${key}\` is not a key browsers accept in a shortcut`;
+  return null;
+}
+
+/**
+ * @param {Record<string, unknown>} manifest
+ * @param {Set<string>} keys
+ * @returns {string[]}
+ */
+export function findBadShortcuts(manifest, keys) {
+  const commands = manifest.commands;
+  if (typeof commands !== "object" || commands === null) return [];
+
+  const problems = [];
+  for (const [name, command] of Object.entries(commands)) {
+    const suggested = command?.suggested_key;
+    if (typeof suggested !== "object" || suggested === null) continue;
+    for (const [platform, shortcut] of Object.entries(suggested)) {
+      if (typeof shortcut !== "string") continue;
+      const problem = checkShortcut(shortcut, keys);
+      if (problem) problems.push(`${name} (${platform}) "${shortcut}": ${problem}`);
+    }
+  }
+  return problems;
+}

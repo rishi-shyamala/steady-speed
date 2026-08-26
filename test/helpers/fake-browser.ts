@@ -36,7 +36,10 @@ export interface FakeBrowser extends WebExtensionApi {
   badgeColor: string | null;
   /** Tabs that tabs.query will report. */
   activeTabs: TabRef[];
-  /** Deliver a message to registered runtime.onMessage listeners. */
+  /**
+   * Deliver a message to registered runtime.onMessage listeners, returning
+   * whatever each of them passed to sendResponse.
+   */
   deliverMessage(message: unknown, sender?: MessageSender): unknown[];
   /** Fire a registered command, as the browser would on a hotkey. */
   fireCommand(command: string, tab?: TabRef): void;
@@ -161,7 +164,11 @@ export function createFakeBrowser(): FakeBrowser {
     },
     action,
     deliverMessage(message, sender = {}) {
-      return [...messageListeners].map((listener) => listener(message, sender));
+      const replies: unknown[] = [];
+      for (const listener of [...messageListeners]) {
+        listener(message, sender, (response) => replies.push(response));
+      }
+      return replies;
     },
     fireCommand(command, tab) {
       for (const listener of [...commandListeners]) listener(command, tab);

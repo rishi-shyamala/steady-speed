@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Rewrites the rate forever</title></head>
+  <body>
+    <video id="player" src="clip.webm" muted playsinline></video>
+    <script>
+      // The worst case: the page re-asserts its rate on every single change.
+      window.resets = 0;
+      const player = document.getElementById("player");
+      player.addEventListener("ratechange", () => {
+        if (player.playbackRate !== 1) {
+          window.resets += 1;
+          player.playbackRate = 1;
+        }
+      });
+    </script>
+  </body>
+</html>
