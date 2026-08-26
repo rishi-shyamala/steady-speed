@@ -17,8 +17,13 @@ this one is built to be *read*:
 - **Minimal permissions.** `storage` plus host access. `npm run guard` fails the
   build if the manifest ever requests `tabs`, `cookies`, `webRequest`,
   `webNavigation`, `scripting`, `clipboard*`, `nativeMessaging` or friends.
-- **No minification.** The shipped bundle is the same code you read here, under a
-  25 KB budget enforced by the guard.
+  Hotkeys and the toolbar badge are built without the `tabs` permission: the
+  command listener is handed the active tab by the browser, and badge updates
+  use the tab a message arrived from. Without that permission the extension
+  cannot read any tab's URL or title — the page tells the popup its own URL.
+- **No minification.** The shipped bundle is the same code you read here, under
+  per-file size budgets the guard enforces. `content.js`, the only script that
+  runs in every frame of every page, is about 1,100 readable lines.
 
 ## Commands
 

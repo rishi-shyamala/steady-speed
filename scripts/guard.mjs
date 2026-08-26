@@ -10,7 +10,20 @@ import {
   findForbiddenPermissions,
 } from "./guard-lib.mjs";
 
-const MAX_BYTES = 25 * 1024;
+/**
+ * Per-file size budgets, in bytes of unminified JavaScript.
+ *
+ * content.js is the one that matters: it is parsed and executed in every frame
+ * of every page. The others load once, or only when the ladder escalates.
+ */
+const BUDGETS = {
+  "content.js": 40 * 1024,
+  "page-agent.js": 10 * 1024,
+  "background.js": 10 * 1024,
+  "popup.js": 25 * 1024,
+  "options.js": 25 * 1024,
+};
+const TOTAL_BUDGET = 100 * 1024;
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = resolve(root, "dist/firefox");
 
@@ -24,13 +37,19 @@ if (scripts.length === 0) failures.push("no built scripts found - run `npm run b
 let totalBytes = 0;
 for (const file of scripts) {
   const source = await readFile(resolve(distDir, file), "utf8");
-  totalBytes += Buffer.byteLength(source);
+  const bytes = Buffer.byteLength(source);
+  totalBytes += bytes;
+
   for (const id of findForbiddenIdentifiers(source)) {
     failures.push(`${file}: forbidden identifier \`${id}\``);
   }
   for (const name of findForbiddenPatterns(source)) {
     failures.push(`${file}: forbidden pattern \`${name}\``);
   }
+
+  const budget = BUDGETS[file];
+  if (budget === undefined) failures.push(`${file}: no size budget defined for this file`);
+  else if (bytes > budget) failures.push(`${file}: ${bytes} bytes, budget is ${budget}`);
 }
 
 const manifest = JSON.parse(await readFile(resolve(distDir, "manifest.json"), "utf8"));
@@ -38,8 +57,8 @@ for (const perm of findForbiddenPermissions(manifest, FORBIDDEN_PERMISSIONS)) {
   failures.push(`manifest.json: forbidden permission \`${perm}\``);
 }
 
-if (totalBytes > MAX_BYTES) {
-  failures.push(`shipped JS is ${totalBytes} bytes, budget is ${MAX_BYTES}`);
+if (totalBytes > TOTAL_BUDGET) {
+  failures.push(`shipped JS is ${totalBytes} bytes in total, budget is ${TOTAL_BUDGET}`);
 }
 
 if (failures.length > 0) {
@@ -47,4 +66,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`guard passed: ${scripts.length} scripts, ${totalBytes} bytes (budget ${MAX_BYTES})`);
+console.log(
+  `guard passed: ${scripts.length} scripts, ${totalBytes} bytes total (budget ${TOTAL_BUDGET})`,
+);

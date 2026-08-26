@@ -16,8 +16,8 @@ const TARGETS = {
 };
 
 const ENTRY_POINTS = {
-  content: "src/content/index.ts",
-  background: "src/background/index.ts",
+  content: "src/content/index.entry.ts",
+  background: "src/background/index.entry.ts",
   "page-agent": "src/page/agent.entry.ts",
   popup: "src/popup/index.ts",
   options: "src/options/index.ts",

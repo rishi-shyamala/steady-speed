@@ -38,10 +38,28 @@ export interface RuntimeApi {
   };
 }
 
+export interface TabRef {
+  readonly id?: number;
+}
+
 export interface CommandsApi {
   onCommand: {
-    addListener(callback: (command: string) => void): void;
+    /**
+     * Firefox and Chromium both hand the active tab to the listener, which is
+     * why this extension never needs the `tabs` permission to find it.
+     */
+    addListener(callback: (command: string, tab?: TabRef) => void): void;
   };
+}
+
+export interface TabsApi {
+  /** Works without the `tabs` permission; host permission covers the target. */
+  sendMessage(tabId: number, message: unknown): Promise<unknown>;
+  /**
+   * Available without the `tabs` permission, but the returned tabs then carry
+   * no url or title - only the id, which is all the popup needs.
+   */
+  query(query: { active: boolean; currentWindow: boolean }): Promise<TabRef[]>;
 }
 
 export interface ActionApi {
@@ -59,6 +77,7 @@ export interface WebExtensionApi {
   storage: { local: StorageArea; onChanged: StorageOnChanged };
   runtime: RuntimeApi;
   commands?: CommandsApi;
+  tabs?: TabsApi;
   action?: ActionApi;
   permissions?: PermissionsApi;
 }
