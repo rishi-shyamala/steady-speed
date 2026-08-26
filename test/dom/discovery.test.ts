@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startDiscovery, type DiscoveryOptions } from "../../src/content/discovery";
+import { startDiscovery, type ScheduleIdle } from "../../src/content/discovery";
 import { MediaRegistry } from "../../src/content/registry";
 
 let stop: (() => void) | null = null;
@@ -11,13 +11,18 @@ let registry: MediaRegistry;
 /** Lets a test wait for the MutationObserver, which delivers asynchronously. */
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-function start(overrides: Partial<DiscoveryOptions> = {}): void {
+/** exactOptionalPropertyTypes means "explicitly undefined" needs saying out loud. */
+type Overrides = { scheduleIdle?: ScheduleIdle | undefined; maxCrawlNodes?: number | undefined };
+
+function start(overrides: Overrides = {}): void {
   registry = new MediaRegistry();
   found = [];
   stop = startDiscovery({
     document,
     registry,
-    onMedia: (media) => found.push(media),
+    onMedia: (media) => {
+      found.push(media);
+    },
     scheduleIdle: (task) => tasks.push(task),
     ...overrides,
   });
