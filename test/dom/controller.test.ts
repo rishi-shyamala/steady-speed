@@ -132,6 +132,20 @@ describe("site rules", () => {
     expect(media.playbackRate).toBe(2);
   });
 
+  it("re-resolves the rule speed when a single-page app navigates", async () => {
+    settings({
+      defaultSpeed: 2,
+      rules: [{ id: "a", pattern: "example.com/shorts", speed: 1, enabled: true }],
+    });
+    const media = video();
+    await start();
+    expect(media.playbackRate).toBe(2);
+
+    href = "https://example.com/shorts/abc";
+    media.dispatchEvent(new Event("play"));
+    expect(media.playbackRate).toBe(1);
+  });
+
   it("follows a settings change without a reload", async () => {
     const media = video();
     await start();

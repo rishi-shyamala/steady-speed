@@ -60,7 +60,9 @@ export function startDiscovery(options: DiscoveryOptions): () => void {
 
   const attachedRoots: EventRoot[] = [];
   let pending: Node[] = [];
+  let pendingCrawls: ParentNode[] = [];
   let flushScheduled = false;
+  let crawlScheduled = false;
   let stopped = false;
 
   const register = (media: HTMLMediaElement): void => {
@@ -79,8 +81,13 @@ export function startDiscovery(options: DiscoveryOptions): () => void {
 
   const handleFocus = (event: Event): void => {
     // Focus inside a shadow root retargets to its host out here, which is how
-    // an isolated content script gets a reference to the root at all.
-    followShadowChain(event.target, attachRoot, sweep);
+    // an isolated content script gets a reference to the root at all. The root
+    // itself is swept immediately - it is one query - and anything nested under
+    // it is left to the idle crawl.
+    followShadowChain(event.target, attachRoot, (scope) => {
+      sweepMedia(scope);
+      queueCrawl(scope);
+    });
   };
 
   const attachRoot = (root: EventRoot): void => {
@@ -89,14 +96,58 @@ export function startDiscovery(options: DiscoveryOptions): () => void {
     for (const type of MEDIA_EVENTS) root.addEventListener(type, handleMediaEvent, CAPTURE);
   };
 
-  const sweep = (scope: ParentNode): void => {
+  /** Cheap: one selector query, no walk. Runs on the critical path. */
+  const sweepMedia = (scope: ParentNode): void => {
     for (const element of scope.querySelectorAll(MEDIA_SELECTOR)) {
       if (isMedia(element)) register(element);
     }
-    crawlShadowHosts(scope, maxCrawlNodes, (shadow) => {
+  };
+
+  /**
+   * Finding shadow hosts means walking every element, which on a large page is
+   * the single most expensive thing here — so it never runs on the critical
+   * path. Media that matters announces itself through events long before this.
+   */
+  const queueCrawl = (scope: ParentNode): void => {
+    pendingCrawls.push(scope);
+    if (crawlScheduled) return;
+    crawlScheduled = true;
+    schedule(crawl);
+  };
+
+  const crawl = (): void => {
+    crawlScheduled = false;
+    const scopes = pendingCrawls;
+    pendingCrawls = [];
+    if (stopped) return;
+    for (const scope of scopes) {
+      crawlShadowHosts(scope, maxCrawlNodes, (shadow) => {
+        attachRoot(shadow);
+        sweepMedia(shadow);
+        queueCrawl(shadow);
+      });
+    }
+  };
+
+  const sweep = (scope: ParentNode): void => {
+    sweepMedia(scope);
+    queueCrawl(scope);
+  };
+
+  /**
+   * A page that appends ten thousand leaf nodes hands the observer ten thousand
+   * added nodes. Nearly all of them cannot contain anything, and asking each one
+   * is what makes a naive implementation expensive - so the O(1) questions are
+   * asked first and the queries only happen where something could actually hide.
+   */
+  const sweepAdded = (element: Element): void => {
+    const shadow = element.shadowRoot;
+    if (shadow) {
       attachRoot(shadow);
-      sweep(shadow);
-    });
+      sweepMedia(shadow);
+      queueCrawl(shadow);
+    }
+    if (element.firstElementChild !== null) sweep(element);
   };
 
   const flush = (): void => {
@@ -106,7 +157,7 @@ export function startDiscovery(options: DiscoveryOptions): () => void {
     if (stopped) return;
     for (const node of nodes) {
       if (isMedia(node)) register(node);
-      else if (node instanceof Element) sweep(node);
+      else if (node instanceof Element) sweepAdded(node);
     }
   };
 

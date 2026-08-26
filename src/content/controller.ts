@@ -59,7 +59,24 @@ export function startController(options: ControllerOptions): Controller {
     }
   };
 
-  const ruleSpeed = (): number => resolveSpeed(pageUrl(), settings.rules, settings.defaultSpeed);
+  // Resolving a rule parses every stored pattern, and the enforcer asks for the
+  // target on every media event. With a couple of hundred rules that measured at
+  // ~0.3 ms a call, so the answer is cached until the settings or the URL move.
+  let cachedUrl: string | null = null;
+  let cachedRuleSpeed = DEFAULT_SETTINGS.defaultSpeed;
+
+  const ruleSpeed = (): number => {
+    const url = pageUrl();
+    if (url !== cachedUrl) {
+      cachedUrl = url;
+      cachedRuleSpeed = resolveSpeed(url, settings.rules, settings.defaultSpeed);
+    }
+    return cachedRuleSpeed;
+  };
+
+  const invalidateRuleSpeed = (): void => {
+    cachedUrl = null;
+  };
   const targetSpeed = (): number => override ?? ruleSpeed();
   const target = (): EnforcementTarget => ({
     speed: targetSpeed(),
@@ -147,6 +164,7 @@ export function startController(options: ControllerOptions): Controller {
 
   const unsubscribe = settingsStore.subscribe((next) => {
     settings = next;
+    invalidateRuleSpeed();
     syncPageWorld(enforcer.tier);
     refresh();
   });
@@ -158,6 +176,7 @@ export function startController(options: ControllerOptions): Controller {
 
   async function initialise(): Promise<void> {
     settings = await settingsStore.load();
+    invalidateRuleSpeed();
     refresh();
     const learned = await tierStore.get(host());
     if (learned !== null && learned > enforcer.tier) enforcer.setTier(learned);

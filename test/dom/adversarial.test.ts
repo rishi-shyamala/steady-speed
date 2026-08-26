@@ -25,7 +25,7 @@ interface Stack {
   readonly tier: Tier;
   advance(ms: number): void;
   runReconciles(times: number): void;
-  flushIdle(): void;
+  flushIdle(rounds?: number): void;
   stop(): void;
 }
 
@@ -83,10 +83,12 @@ function createStack(doc: Document = document): Stack {
         timerTask?.();
       }
     },
-    flushIdle() {
-      const queued = idleTasks;
-      idleTasks = [];
-      for (const task of queued) task();
+    flushIdle(rounds = 4) {
+      for (let i = 0; i < rounds && idleTasks.length > 0; i += 1) {
+        const queued = idleTasks;
+        idleTasks = [];
+        for (const task of queued) task();
+      }
     },
     stop: stopDiscovery,
   };
@@ -134,6 +136,7 @@ describe("well-behaved pages stay free", () => {
     inner.append(media);
 
     stack = createStack();
+    stack.flushIdle();
     expect(media.playbackRate).toBe(TARGET);
     expect(stack.tier).toBe(0);
   });
