@@ -40,6 +40,8 @@ export interface EnforcerOptions {
   initialTier?: Tier | undefined;
   now?: (() => number) | undefined;
   onTierChange?: ((tier: Tier) => void) | undefined;
+  /** Fired whenever the site changes a rate we did not change. */
+  onDivergence?: (() => void) | undefined;
   reapplyLimit?: number | undefined;
   reapplyWindowMs?: number | undefined;
   cooldownMs?: number | undefined;
@@ -58,6 +60,7 @@ export class Enforcer {
   private readonly config: EscalationConfig;
   private readonly now: () => number;
   private readonly onTierChange: (tier: Tier) => void;
+  private readonly onDivergence: () => void;
   private readonly reapplyLimit: number;
   private readonly reapplyWindowMs: number;
   private readonly cooldownMs: number;
@@ -68,6 +71,7 @@ export class Enforcer {
     this.config = options.config ?? DEFAULT_ESCALATION_CONFIG;
     this.now = options.now ?? (() => Date.now());
     this.onTierChange = options.onTierChange ?? (() => {});
+    this.onDivergence = options.onDivergence ?? (() => {});
     this.reapplyLimit = options.reapplyLimit ?? DEFAULT_REAPPLY_LIMIT;
     this.reapplyWindowMs = options.reapplyWindowMs ?? DEFAULT_REAPPLY_WINDOW_MS;
     this.cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS;
@@ -121,6 +125,8 @@ export class Enforcer {
       this.apply(media);
     });
 
+    if (diverged) this.onDivergence();
+
     this.transition(diverged ? recordDivergence(this.state, now, this.config) : recordCalm(this.state, now, this.config));
     return diverged;
   }
@@ -130,6 +136,7 @@ export class Enforcer {
 
     const now = this.now();
     this.transition(recordDivergence(this.state, now, this.config));
+    this.onDivergence();
     if (!shouldReapply(this.state.tier)) return;
 
     const guard = this.guardFor(media);
