@@ -31,6 +31,8 @@ export type MessageListener = (message: unknown, sender: MessageSender) => unkno
 
 export interface RuntimeApi {
   getURL(path: string): string;
+  /** Present in both browsers; optional so the type never lies about it. */
+  openOptionsPage?(): Promise<void> | void;
   sendMessage(message: unknown): Promise<unknown>;
   onMessage: {
     addListener(callback: MessageListener): void;
