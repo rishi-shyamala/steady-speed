@@ -27,7 +27,16 @@ export interface MessageSender {
   readonly frameId?: number;
 }
 
-export type MessageListener = (message: unknown, sender: MessageSender) => unknown;
+/**
+ * Replies go through `sendResponse` rather than a returned promise: returning a
+ * promise works in Firefox but is silently dropped in Chromium, and the reply
+ * path is worth having testable in both.
+ */
+export type MessageListener = (
+  message: unknown,
+  sender: MessageSender,
+  sendResponse: (response: unknown) => void,
+) => unknown;
 
 export interface RuntimeApi {
   getURL(path: string): string;

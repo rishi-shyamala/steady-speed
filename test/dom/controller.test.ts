@@ -207,8 +207,14 @@ describe("state", () => {
 
   it("answers a state request over messaging", async () => {
     await start();
-    const [reply] = browser.deliverMessage({ type: "get-state" });
-    await expect(reply).resolves.toMatchObject({ speed: 2 });
+    expect(browser.deliverMessage({ type: "get-state" })).toEqual([
+      expect.objectContaining({ speed: 2 }),
+    ]);
+  });
+
+  it("says nothing at all to a message it does not recognise", async () => {
+    await start();
+    expect(browser.deliverMessage({ type: "burn-it-down" })).toEqual([]);
   });
 });
 

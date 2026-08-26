@@ -25,16 +25,15 @@ export function startBackground(api: WebExtensionApi = getBrowser()): Background
     void Promise.resolve(api.tabs?.sendMessage(tab.id, { type: "command", command })).catch(ignore);
   };
 
-  const handleMessage = (message: unknown, sender: MessageSender): unknown => {
+  const handleMessage = (message: unknown, sender: MessageSender): void => {
     const request = parseBackgroundRequest(message);
     const tabId = sender.tab?.id;
-    if (!request || tabId === undefined) return undefined;
+    if (!request || tabId === undefined) return;
     // Only the top frame speaks for the tab; a frame's own speed is its own.
-    if (sender.frameId !== undefined && sender.frameId !== 0) return undefined;
+    if (sender.frameId !== undefined && sender.frameId !== 0) return;
 
     void api.action?.setBadgeText({ text: formatBadge(request.speed), tabId });
     void api.action?.setTitle({ title: `Steady — ${formatSpeed(request.speed)}`, tabId });
-    return undefined;
   };
 
   api.commands?.onCommand.addListener(handleCommand);

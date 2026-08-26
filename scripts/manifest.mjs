@@ -30,6 +30,33 @@ export const FORBIDDEN_PERMISSIONS = [
 
 const MATCHES = ["http://*/*", "https://*/*", "file:///*"];
 
+/**
+ * The keys both Firefox and Chromium accept in a `suggested_key`. Anything else
+ * makes the browser reject the whole manifest, silently, at install time - which
+ * is exactly the kind of failure a build should catch rather than a user.
+ */
+export const SHORTCUT_KEYS = new Set([
+  ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split(""),
+  "Comma",
+  "Period",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  "Space",
+  "Insert",
+  "Delete",
+  "Up",
+  "Down",
+  "Left",
+  "Right",
+  ...Array.from({ length: 12 }, (_, i) => `F${i + 1}`),
+  "MediaNextTrack",
+  "MediaPlayPause",
+  "MediaPrevTrack",
+  "MediaStop",
+]);
+
 const COMMANDS = {
   "speed-up": {
     suggested_key: { default: "Alt+Period" },
@@ -40,11 +67,11 @@ const COMMANDS = {
     description: "Decrease playback speed by one step",
   },
   "toggle-normal": {
-    suggested_key: { default: "Alt+Slash" },
+    suggested_key: { default: "Alt+0" },
     description: "Toggle between 1x and your default speed",
   },
   "reset-default": {
-    suggested_key: { default: "Alt+0" },
+    suggested_key: { default: "Alt+Shift+0" },
     description: "Reset this site to your default speed",
   },
 };

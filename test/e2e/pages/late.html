@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Player added later</title></head>
+  <body>
+    <script>
+      setTimeout(() => {
+        const player = document.createElement("video");
+        player.id = "player";
+        player.src = "clip.webm";
+        player.muted = true;
+        document.body.append(player);
+      }, 400);
+    </script>
+  </body>
+</html>

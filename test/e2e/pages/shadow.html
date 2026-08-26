@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Player inside shadow roots</title></head>
+  <body>
+    <div id="outer"></div>
+    <script>
+      const outer = document.getElementById("outer").attachShadow({ mode: "open" });
+      const middle = document.createElement("div");
+      outer.append(middle);
+      const inner = middle.attachShadow({ mode: "open" });
+      const player = document.createElement("video");
+      player.src = "clip.webm";
+      player.muted = true;
+      inner.append(player);
+      window.findPlayer = () => player;
+    </script>
+  </body>
+</html>

@@ -3,8 +3,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FORBIDDEN_PERMISSIONS } from "./manifest.mjs";
+import { FORBIDDEN_PERMISSIONS, SHORTCUT_KEYS } from "./manifest.mjs";
 import {
+  findBadShortcuts,
   findForbiddenIdentifiers,
   findForbiddenPatterns,
   findForbiddenPermissions,
@@ -55,6 +56,9 @@ for (const file of scripts) {
 const manifest = JSON.parse(await readFile(resolve(distDir, "manifest.json"), "utf8"));
 for (const perm of findForbiddenPermissions(manifest, FORBIDDEN_PERMISSIONS)) {
   failures.push(`manifest.json: forbidden permission \`${perm}\``);
+}
+for (const problem of findBadShortcuts(manifest, SHORTCUT_KEYS)) {
+  failures.push(`manifest.json: ${problem}`);
 }
 
 if (totalBytes > TOTAL_BUDGET) {

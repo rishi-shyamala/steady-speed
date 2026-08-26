@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Resets on play</title></head>
+  <body>
+    <video id="player" src="clip.webm" muted playsinline></video>
+    <script>
+      // A player that insists on its own speed whenever playback starts.
+      const player = document.getElementById("player");
+      player.addEventListener("play", () => {
+        player.playbackRate = 1;
+      });
+    </script>
+  </body>
+</html>

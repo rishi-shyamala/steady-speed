@@ -108,16 +108,19 @@ export function startController(options: ControllerOptions): Controller {
     refresh();
   }
 
-  const handleMessage = (message: unknown): unknown => {
+  const handleMessage = (
+    message: unknown,
+    _sender: unknown,
+    sendResponse: (response: unknown) => void,
+  ): void => {
     const request = parseContentRequest(message);
-    if (!request) return undefined;
-    if (request.type === "get-state") return Promise.resolve(snapshot());
+    if (!request) return;
     if (request.type === "command") runCommand(request.command);
-    else {
+    else if (request.type === "set-speed") {
       override = conformSpeed(request.speed);
       refresh();
     }
-    return Promise.resolve(snapshot());
+    sendResponse(snapshot());
   };
 
   function snapshot(): ContentState {
