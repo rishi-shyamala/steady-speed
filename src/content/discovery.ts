@@ -41,9 +41,9 @@ export interface DiscoveryOptions {
   /** Called once per element, the first time it is seen. */
   onMedia: (media: HTMLMediaElement) => void;
   /** Injectable so tests can flush deterministically. */
-  scheduleIdle?: ScheduleIdle;
+  scheduleIdle?: ScheduleIdle | undefined;
   /** Ceiling on the shadow-host crawl. Lower it to profile pathological pages. */
-  maxCrawlNodes?: number;
+  maxCrawlNodes?: number | undefined;
 }
 
 /** Starts discovery for one frame. Returns a function that stops it. */
