@@ -13,6 +13,7 @@
  * rate properties, and notice elements via `play`/`load`.
  */
 
+import { IterableWeakSet } from "../core/weak-set";
 import {
   commandEventName,
   dispatchPayload,
@@ -44,7 +45,9 @@ interface Intercepted {
 
 export function installAgent(options: AgentOptions): AgentHandle {
   const prototype = options.mediaPrototype ?? HTMLMediaElement.prototype;
-  const known = new Set<HTMLMediaElement>();
+  // Held weakly for the same reason as the content script's registry: an
+  // `new Audio()` that was played once must not be pinned for the page's life.
+  const known = new IterableWeakSet<HTMLMediaElement>();
 
   let target: { speed: number; preservePitch: boolean } | null = null;
 

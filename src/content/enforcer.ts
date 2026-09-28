@@ -57,7 +57,7 @@ export class Enforcer {
   private readonly guards = new WeakMap<HTMLMediaElement, LoopGuard>();
   private readonly registry: MediaRegistry;
   private readonly getTarget: () => EnforcementTarget;
-  private readonly config: EscalationConfig;
+  private config: EscalationConfig;
   private readonly now: () => number;
   private readonly onTierChange: (tier: Tier) => void;
   private readonly onDivergence: () => void;
@@ -80,6 +80,11 @@ export class Enforcer {
 
   get tier(): Tier {
     return this.state.tier;
+  }
+
+  /** Takes effect from the next divergence, so a settings change needs no restart. */
+  setConfig(config: EscalationConfig): void {
+    this.config = config;
   }
 
   /** Restores a tier learned on an earlier visit to this site. */

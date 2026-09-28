@@ -64,8 +64,11 @@ export interface CommandsApi {
 }
 
 export interface TabsApi {
-  /** Works without the `tabs` permission; host permission covers the target. */
-  sendMessage(tabId: number, message: unknown): Promise<unknown>;
+  /**
+   * Works without the `tabs` permission; host permission covers the target.
+   * Without a frameId every frame receives it and the first reply wins.
+   */
+  sendMessage(tabId: number, message: unknown, options?: { frameId?: number }): Promise<unknown>;
   /**
    * Available without the `tabs` permission, but the returned tabs then carry
    * no url or title - only the id, which is all the popup needs.

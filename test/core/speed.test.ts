@@ -7,6 +7,7 @@ import {
   conformSpeed,
   formatBadge,
   formatSpeed,
+  parseSpeedInput,
   roundSpeed,
   speedsEqual,
   stepSpeed,
@@ -155,5 +156,18 @@ describe("formatBadge", () => {
     expect(formatBadge(2)).toBe("2");
     expect(formatBadge(1.75)).toBe("1.75");
     expect(formatBadge(4)).toBe("4");
+  });
+});
+
+describe("parseSpeedInput", () => {
+  it("reads what was typed into a speed field", () => {
+    expect(parseSpeedInput("1.5")).toBe(1.5);
+    expect(parseSpeedInput(" 99 ")).toBe(MAX_SPEED);
+  });
+
+  it("treats an emptied field as no answer, not as zero", () => {
+    expect(parseSpeedInput("")).toBeNull();
+    expect(parseSpeedInput("   ")).toBeNull();
+    expect(parseSpeedInput("fast")).toBeNull();
   });
 });

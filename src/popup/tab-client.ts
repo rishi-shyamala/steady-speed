@@ -15,12 +15,19 @@ export interface TabClient {
   send(request: ContentRequest): Promise<ContentState | null>;
 }
 
+const TOP_FRAME = { frameId: 0 };
+
 export function createTabClient(api: WebExtensionApi = getBrowser()): TabClient {
   const ask = async (request: ContentRequest): Promise<ContentState | null> => {
     try {
       const [tab] = (await api.tabs?.query({ active: true, currentWindow: true })) ?? [];
       if (tab?.id === undefined) return null;
-      const reply = await api.tabs?.sendMessage(tab.id, request);
+      // A change goes to every frame, as a hotkey does, so embedded players
+      // follow it. The state always comes from the top frame: left to the
+      // first reply, a page with iframes could report an ad frame's URL, and
+      // the pin buttons would pin that host instead.
+      if (request.type !== "get-state") await api.tabs?.sendMessage(tab.id, request);
+      const reply = await api.tabs?.sendMessage(tab.id, { type: "get-state" }, TOP_FRAME);
       return isContentState(reply) ? reply : null;
     } catch {
       return null;

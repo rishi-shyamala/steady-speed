@@ -9,6 +9,8 @@
 import type { Tier } from "../core/escalation";
 import { normalizePattern, type SiteRule } from "../core/rules";
 import {
+  MAX_STEP,
+  MIN_STEP,
   createRule,
   parseSettingsJson,
   removeRule,
@@ -16,7 +18,7 @@ import {
   upsertRule,
   type Settings,
 } from "../core/settings";
-import { MAX_SPEED, MIN_SPEED, conformSpeed } from "../core/speed";
+import { MAX_SPEED, MIN_SPEED, parseSpeedInput } from "../core/speed";
 import type { SettingsStore, TierStore } from "../platform/storage";
 import { describeLearnedTier, formatPresets, parsePresets, ruleSpeedLabel } from "./model";
 
@@ -66,10 +68,14 @@ export function renderOptions(root: HTMLElement, deps: OptionsDeps): OptionsHand
 
   async function onField(field: HTMLInputElement): Promise<void> {
     const value = field.value;
+    const speed = parseSpeedInput(value);
     switch (field.dataset.field) {
       case "defaultSpeed":
-        return save((current) => ({ ...current, defaultSpeed: conformSpeed(Number(value)) }));
+        // An emptied number field reads as 0; redraw the stored value instead.
+        if (speed === null) return draw();
+        return save((current) => ({ ...current, defaultSpeed: speed }));
       case "step":
+        if (value.trim() === "") return draw();
         return save((current) => ({ ...current, step: Number(value) }));
       case "presets": {
         const presets = parsePresets(value);
@@ -84,10 +90,8 @@ export function renderOptions(root: HTMLElement, deps: OptionsDeps): OptionsHand
           enforcement: { ...current.enforcement, [String(field.dataset.field)]: field.checked },
         }));
       case "ruleSpeed":
-        return updateRule(String(field.dataset.value), (rule) => ({
-          ...rule,
-          speed: conformSpeed(Number(value)),
-        }));
+        if (speed === null) return draw();
+        return updateRule(String(field.dataset.value), (rule) => ({ ...rule, speed }));
       case "rulePattern": {
         const pattern = normalizePattern(value);
         if (!pattern) {
@@ -172,7 +176,7 @@ function speedSection(settings: Settings): HTMLElement {
     "Speed",
     "What plays where, before any site rules.",
     field("Default speed", numberInput("defaultSpeed", settings.defaultSpeed, settings.step)),
-    field("Step size", numberInput("step", settings.step, 0.05)),
+    field("Step size", numberInput("step", settings.step, MIN_STEP, MIN_STEP, MAX_STEP)),
     field(
       "Popup presets",
       el("input", {
@@ -323,13 +327,19 @@ function field(label: string, control: HTMLElement): HTMLElement {
   return el("div", { class: "field" }, el("label", { for: control.id }, label), control);
 }
 
-function numberInput(name: string, value: number, step: number): HTMLElement {
+function numberInput(
+  name: string,
+  value: number,
+  step: number,
+  min: number = MIN_SPEED,
+  max: number = MAX_SPEED,
+): HTMLElement {
   return el("input", {
     type: "number",
     id: name,
     "data-field": name,
-    min: String(MIN_SPEED),
-    max: String(MAX_SPEED),
+    min: String(min),
+    max: String(max),
     step: String(step),
     value: String(value),
   });

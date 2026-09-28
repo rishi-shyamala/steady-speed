@@ -13,8 +13,8 @@ import { NORMAL_SPEED, conformSpeed, roundSpeed } from "./speed";
 export const SETTINGS_VERSION = 1;
 
 /** Finer than this is not worth a keypress; coarser is not a step. */
-const MIN_STEP = 0.05;
-const MAX_STEP = 1;
+export const MIN_STEP = 0.05;
+export const MAX_STEP = 1;
 const MAX_PRESETS = 8;
 
 export interface EnforcementSettings {

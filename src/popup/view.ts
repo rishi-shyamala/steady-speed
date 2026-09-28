@@ -3,7 +3,7 @@
  * and turn a click back into one message or one settings update.
  */
 
-import { NORMAL_SPEED, formatSpeed, speedsEqual } from "../core/speed";
+import { NORMAL_SPEED, formatSpeed, parseSpeedInput, speedsEqual } from "../core/speed";
 import { setSpeedForUrl, removeRule, type Settings } from "../core/settings";
 import type { SettingsStore } from "../platform/storage";
 import type { ContentState } from "../platform/messages";
@@ -69,12 +69,13 @@ export function renderPopup(root: HTMLElement, deps: PopupDeps): PopupHandle {
       case "unpin":
         settings = await deps.settings.update((current) => removeRule(current, String(value)));
         break;
-      case "default":
-        settings = await deps.settings.update((current) => ({
-          ...current,
-          defaultSpeed: Number(value),
-        }));
+      case "default": {
+        // An emptied field redraws with the stored value rather than saving 0.
+        const speed = parseSpeedInput(value ?? "");
+        if (speed === null) break;
+        settings = await deps.settings.update((current) => ({ ...current, defaultSpeed: speed }));
         break;
+      }
       case "options":
         deps.openOptions();
         return;

@@ -8,7 +8,7 @@
  * agent - hangs off that.
  */
 
-import { needsPageWorld, type Tier } from "../core/escalation";
+import { DEFAULT_ESCALATION_CONFIG, ceilingTier, needsPageWorld, type EscalationConfig, type Tier } from "../core/escalation";
 import { resolveSpeed } from "../core/rules";
 import { DEFAULT_SETTINGS, type Settings } from "../core/settings";
 import { NORMAL_SPEED, conformSpeed, speedsEqual, stepSpeed } from "../core/speed";
@@ -101,13 +101,23 @@ export function startController(options: ControllerOptions): Controller {
   }
 
   function syncPageWorld(tier: Tier): void {
-    if (needsPageWorld(tier) && settings.enforcement.allowPageWorld) bridge.activate(target());
+    if (wantsPageWorld(tier)) bridge.activate(target());
     else bridge.deactivate();
+  }
+
+  function wantsPageWorld(tier: Tier): boolean {
+    return needsPageWorld(tier) && settings.enforcement.allowPageWorld;
+  }
+
+  function applySettings(next: Settings): void {
+    settings = next;
+    invalidateRuleSpeed();
+    enforcer.setConfig(escalationConfig(next));
   }
 
   function refresh(): void {
     enforcer.applyAll();
-    if (needsPageWorld(enforcer.tier)) bridge.activate(target());
+    if (wantsPageWorld(enforcer.tier)) bridge.activate(target());
     report();
   }
 
@@ -163,8 +173,7 @@ export function startController(options: ControllerOptions): Controller {
   });
 
   const unsubscribe = settingsStore.subscribe((next) => {
-    settings = next;
-    invalidateRuleSpeed();
+    applySettings(next);
     syncPageWorld(enforcer.tier);
     refresh();
   });
@@ -175,11 +184,14 @@ export function startController(options: ControllerOptions): Controller {
   const ready = initialise();
 
   async function initialise(): Promise<void> {
-    settings = await settingsStore.load();
-    invalidateRuleSpeed();
+    applySettings(await settingsStore.load());
     refresh();
-    const learned = await tierStore.get(host());
-    if (learned !== null && learned > enforcer.tier) enforcer.setTier(learned);
+    // A learned tier is the ladder moving on its own, so it waits on the same switch.
+    if (!settings.enforcement.autoEscalate) return;
+    const stored = await tierStore.get(host());
+    if (stored === null) return;
+    const learned = Math.min(stored, ceilingTier(escalationConfig(settings))) as Tier;
+    if (learned > enforcer.tier) enforcer.setTier(learned);
   }
 
   return {
@@ -209,6 +221,11 @@ export function effectiveUrl(href: string, referrer: string): string {
     return href;
   }
   return referrer || href;
+}
+
+/** The user's switches, laid over the ladder's tuning. */
+function escalationConfig(settings: Settings): EscalationConfig {
+  return { ...DEFAULT_ESCALATION_CONFIG, ...settings.enforcement };
 }
 
 function ignore(): void {}
