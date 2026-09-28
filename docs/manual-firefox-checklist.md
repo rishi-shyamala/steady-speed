@@ -7,13 +7,33 @@ built in, so this is the list to walk once after installing.
 Install the signed build (see `SIGNING.md`), then set your default speed in the
 popup before starting.
 
+For everything except the real-player list you do not need to install anything:
+
+```sh
+npm run try                  # Zen, if it is installed, else Firefox
+npm run try -- --browser=firefox
+npm run try -- --serve       # just the fixture pages, no browser
+```
+
+That builds `dist/firefox`, serves the same fixture pages the end-to-end suite
+drives, and launches the browser with the extension temporarily installed. The
+temporary install disappears when you close the browser, so it never collides
+with the signed copy.
+
+## Last walked
+
+2026-08-26, Zen 1.21.15b (Gecko 154), Steady 0.1.0 installed from a signed build.
+Basics, site rules and the not-automatically-testable section all passed. Real
+players were spot-checked rather than worked through — YouTube confirmed working,
+the rest of that list is still open. Nothing failed.
+
 ## Basics
 
 - [ ] A plain `<video>` page plays at your default speed on load.
 - [ ] Reloading keeps it at your default speed.
 - [ ] A brand new tab on a different site also starts at your default speed.
 - [ ] The toolbar badge shows the speed, and is blank at 1x.
-- [ ] `Alt+.` and `Alt+,` step the speed; `Alt+/` toggles 1x; `Alt+0` resets.
+- [ ] `Alt+.` and `Alt+,` step the speed; `Alt+0` toggles 1x; `Alt+Shift+0` resets.
 - [ ] Hotkeys still work with the video fullscreen.
 - [ ] Audio is still audible at 0.25x and at 4x. If it is silent at one end,
       note where — Firefox mutes outside a range and the bounds may need moving.

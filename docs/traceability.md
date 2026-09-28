@@ -13,7 +13,7 @@ nothing in the right-hand column is a requirement nobody has checked.
 | 3 | Defaults to your speed on every site and every reload | `test/dom/controller.test.ts` — "brings media on the page to the default speed", "uses a stored default rather than the built-in one", "applies to media that turns up later"; reload is the same code path as first load |
 | 4 | Change the speed away from the default | `test/dom/controller.test.ts` — "steps up and down by the configured step", "toggles between normal and the site's speed", "resets back to what the rules say"; hotkey delivery in `test/platform/background.test.ts`; popup in `test/dom/popup.test.ts` |
 | 5 | A list of sites that run at 1x, overriding the default | `test/core/rules.test.ts` — "supports the always-1x case the site list exists for"; `test/dom/controller.test.ts` — "pins a site to 1x when a rule says so"; editing in `test/dom/options.test.ts` and `test/dom/popup.test.ts` |
-| 6 | Runs on Zen | Manifest targets Gecko 128+ with an explicit add-on id (`scripts/manifest.mjs`); the build is a signing-ready `.xpi` (`test/zip.test.ts`, `npm run verify`). Zen enforces signatures, so this is only *proved* by installing a signed build — `docs/SIGNING.md` and the manual checklist |
+| 6 | Runs on Zen | Manifest targets Gecko 128+ with an explicit add-on id (`scripts/manifest.mjs`); the build is a signing-ready `.xpi` (`test/zip.test.ts`, `npm run verify`). Proved by installing on Zen 1.21.15b (Gecko 154) on 2026-08-26 and confirming playback control on a real site — see the "Last walked" record in `docs/manual-firefox-checklist.md`. Zen builds so far ship without signature enforcement, so a signature is optional there; `docs/SIGNING.md` covers both routes |
 
 ## The requirements behind the requirements
 
