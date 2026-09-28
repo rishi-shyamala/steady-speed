@@ -53,6 +53,17 @@ export function stepSpeed(current: number, step: number, direction: 1 | -1): num
   return clampSpeed(roundSpeed((nextUnits * stepHundredths) / 100));
 }
 
+/**
+ * Reads a speed from a form field. An emptied field is null rather than
+ * `Number("")`, which is 0 and would quietly clamp to the minimum speed.
+ */
+export function parseSpeedInput(text: string): number | null {
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  const value = Number(trimmed);
+  return Number.isFinite(value) ? conformSpeed(value) : null;
+}
+
 /** True when two speeds would render and apply identically. */
 export function speedsEqual(a: number, b: number): boolean {
   return Math.abs(a - b) < TOLERANCE;

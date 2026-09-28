@@ -23,7 +23,7 @@ this one is built to be *read*:
   cannot read any tab's URL or title — the page tells the popup its own URL.
 - **No minification.** The shipped bundle is the same code you read here, under
   per-file size budgets the guard enforces. `content.js`, the only script that
-  runs in every frame of every page, is about 1,100 readable lines.
+  runs in every frame of every page, is about 1,200 readable lines.
 
 ## Commands
 
@@ -32,9 +32,20 @@ this one is built to be *read*:
 | `npm run check` | typecheck, coverage-gated tests, build, guard — the full gate |
 | `npm test` | unit and DOM tests |
 | `npm run coverage` | tests with coverage thresholds enforced |
+| `npm run e2e` | end-to-end pass in a real browser (needs `npx playwright install chromium`) |
+| `npm run try` | launch Zen with this build installed, over the fixture pages |
 | `npm run build` | build `dist/firefox` |
 | `npm run guard` | static guarantees against the built artifact |
+| `npm run package` | build, guard, and write `dist/steady-<version>.xpi` with its sha256 |
+| `npm run verify` | build twice and prove the output is reproducible |
 | `npm run deps:report` | exactly what is trusted at build time |
+
+## Installing it
+
+Zen builds so far ship with signature enforcement compiled out, so
+`npm run package` and `about:addons` → gear → **Install Add-on From File…** is
+the whole story. A Mozilla release build of Firefox needs the add-on signed
+first. `docs/SIGNING.md` covers both, and how to tell which one you have.
 
 ## Layout
 

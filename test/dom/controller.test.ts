@@ -317,6 +317,57 @@ describe("the page-world agent", () => {
     await start();
     expect(document.querySelector("script[data-steady-key]")).toBeNull();
   });
+
+  it("stays out of the page when switched off, even after the speed changes", async () => {
+    settings({ enforcement: { autoEscalate: true, allowPageWorld: false } });
+    browser.seed({ [TIERS_KEY]: { "example.com": 3 } });
+    await start();
+    browser.deliverMessage({ type: "set-speed", speed: 3 });
+    browser.deliverMessage({ type: "command", command: "speed-up" });
+    expect(document.querySelector("script[data-steady-key]")).toBeNull();
+  });
+
+  it("never climbs to the top rung when page-world injection is switched off", async () => {
+    settings({ enforcement: { autoEscalate: true, allowPageWorld: false } });
+    browser.seed({ [TIERS_KEY]: { "example.com": 2 } });
+    const media = video();
+    await start();
+    for (let i = 0; i < 10; i += 1) {
+      media.playbackRate = 1;
+      media.dispatchEvent(new Event("ratechange"));
+    }
+    expect(controller?.state.tier).toBe(2);
+  });
+});
+
+describe("with automatic escalation switched off", () => {
+  it("does not climb when the site resets the speed", async () => {
+    settings({ enforcement: { autoEscalate: false, allowPageWorld: true } });
+    const media = video();
+    await start();
+    media.playbackRate = 1;
+    media.dispatchEvent(new Event("ratechange"));
+    expect(controller?.state.tier).toBe(0);
+  });
+
+  it("does not restore a tier learned on an earlier visit", async () => {
+    settings({ enforcement: { autoEscalate: false, allowPageWorld: true } });
+    browser.seed({ [TIERS_KEY]: { "example.com": 3 } });
+    await start();
+    expect(controller?.state.tier).toBe(0);
+    expect(document.querySelector("script[data-steady-key]")).toBeNull();
+  });
+
+  it("stops climbing as soon as it is switched off", async () => {
+    const media = video();
+    await start();
+    await browser.storage.local.set({
+      [SETTINGS_KEY]: { ...DEFAULT_SETTINGS, enforcement: { autoEscalate: false, allowPageWorld: true } },
+    });
+    media.playbackRate = 1;
+    media.dispatchEvent(new Event("ratechange"));
+    expect(controller?.state.tier).toBe(0);
+  });
 });
 
 describe("hidden tabs", () => {

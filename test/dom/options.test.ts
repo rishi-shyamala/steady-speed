@@ -62,6 +62,25 @@ describe("speed settings", () => {
     expect(stored().defaultSpeed).toBe(4);
   });
 
+  it("leaves the speeds alone when a field is emptied", async () => {
+    seedRules([{ id: "r1", pattern: "example.com", speed: 1.5, enabled: true }]);
+    await mount();
+    setField("#defaultSpeed", "");
+    await settle();
+    setField('[data-field="ruleSpeed"]', "");
+    await settle();
+    setField("#step", "");
+    await settle();
+    expect(stored()).toMatchObject({ defaultSpeed: 2, step: 0.25, rules: [{ speed: 1.5 }] });
+    expect(root.querySelector<HTMLInputElement>("#defaultSpeed")?.value).toBe("2");
+  });
+
+  it("offers the step range the settings accept", async () => {
+    await mount();
+    const step = root.querySelector<HTMLInputElement>("#step");
+    expect([step?.min, step?.max]).toEqual(["0.05", "1"]);
+  });
+
   it("saves a new step", async () => {
     await mount();
     setField("#step", "0.1");

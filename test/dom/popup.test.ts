@@ -101,7 +101,7 @@ describe("what it shows", () => {
     });
     click('[data-act="reset"]');
     await settle();
-    expect(seen).toEqual([{ type: "command", command: "reset-default" }]);
+    expect(seen).toEqual([{ type: "command", command: "reset-default" }, { type: "get-state" }]);
     expect(root.querySelector(".readout")?.textContent).toContain("2x");
   });
 
@@ -129,7 +129,9 @@ describe("changing the speed", () => {
     expect(seen).toEqual([
       { type: "get-state" },
       { type: "command", command: "speed-up" },
+      { type: "get-state" },
       { type: "command", command: "speed-down" },
+      { type: "get-state" },
     ]);
   });
 
@@ -202,6 +204,18 @@ describe("the default speed", () => {
     expect((browser.store.get(SETTINGS_KEY) as { defaultSpeed: number }).defaultSpeed).toBe(1.5);
   });
 
+  it("leaves the default alone when the field is emptied", async () => {
+    await mount();
+    const input = root.querySelector<HTMLInputElement>('input[data-act="default"]');
+    if (input) {
+      input.value = "";
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    await settle();
+    expect(browser.store.has(SETTINGS_KEY)).toBe(false);
+    expect(root.querySelector<HTMLInputElement>('input[data-act="default"]')?.value).toBe("2");
+  });
+
   it("ignores a change event from something else", async () => {
     await mount();
     root.querySelector(".presets")?.dispatchEvent(new Event("change", { bubbles: true }));
@@ -255,6 +269,27 @@ describe("the tab client", () => {
   it("returns nothing on a browser with no tabs API at all", async () => {
     delete (browser as { tabs?: unknown }).tabs;
     expect(await createTabClient(browser).getState()).toBeNull();
+  });
+
+  it("reads the state of the top frame, not whichever frame answers first", async () => {
+    const iframe = { ...baseState(), url: "https://ads.example.net/frame" };
+    browser.tabs.sendMessage = async (_tabId, _message, options) =>
+      options?.frameId === 0 ? baseState() : iframe;
+    expect((await createTabClient(browser).getState())?.url).toBe("https://example.com/watch");
+  });
+
+  it("sends a change to every frame, then reports the top frame", async () => {
+    const calls: { message: unknown; frameId: number | undefined }[] = [];
+    browser.tabs.sendMessage = async (_tabId, message, options) => {
+      calls.push({ message, frameId: options?.frameId });
+      return options?.frameId === 0 ? baseState() : { ...baseState(), url: "https://ads.example.net/" };
+    };
+    const state = await createTabClient(browser).send({ type: "set-speed", speed: 3 });
+    expect(calls).toEqual([
+      { message: { type: "set-speed", speed: 3 }, frameId: undefined },
+      { message: { type: "get-state" }, frameId: 0 },
+    ]);
+    expect(state?.url).toBe("https://example.com/watch");
   });
 
   it("refuses to send a request the content script would not understand", async () => {
